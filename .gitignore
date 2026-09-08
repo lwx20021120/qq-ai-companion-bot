@@ -1,0 +1,11 @@
+# 忽略敏感与运行时数据
+astrbot_data/
+napcat_data/
+*.db
+*.db-shm
+*.db-wal
+.env
+*_ssh.py
+*_sftp.py
+__pycache__/
+*.pyc

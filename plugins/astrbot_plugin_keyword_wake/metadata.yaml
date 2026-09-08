@@ -1,0 +1,6 @@
+name: astrbot_plugin_keyword_wake
+desc: 群聊关键词唤醒插件：消息中出现指定关键词（如人设名"小织"）时机器人必定根据上下文回复，无需@
+help: 群聊消息中出现关键词时唤醒机器人回复
+version: 1.0.0
+author: foldingmaple
+repo: ""

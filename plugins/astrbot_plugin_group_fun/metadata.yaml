@@ -1,0 +1,5 @@
+name: astrbot_plugin_group_fun
+desc: 群功能增强：定时问候、群聊日报、欢迎新人、趣味互动（抽签/掷骰子/塔罗）
+version: 1.0.0
+author: foldingmaple
+repo: https://github.com/lwx20021120/qq-ai-companion-bot

@@ -3,6 +3,8 @@ services:
     image: soulter/astrbot:latest
     container_name: astrbot
     restart: always
+    environment:
+      - TZ=Asia/Shanghai
     ports:
       - "6185:6185"   # WebUI
       - "6199:6199"   # OneBot v11 反向 WebSocket
@@ -19,6 +21,7 @@ services:
       - NAPCAT_GID=0
       - NAPCAT_UID=0
       - ACCOUNT=1955291327
+      - TZ=Asia/Shanghai
       # 缓解 QQ 原生崩溃/Worker 退出循环，减少日志刷屏
       - NAPCAT_DISABLE_MULTI_PROCESS=1
     ports:

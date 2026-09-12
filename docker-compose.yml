@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   astrbot:
     image: soulter/astrbot:latest
@@ -19,7 +18,9 @@ services:
     environment:
       - NAPCAT_GID=0
       - NAPCAT_UID=0
-      - ACCOUNT=你的机器人QQ号
+      - ACCOUNT=1955291327
+      # 缓解 QQ 原生崩溃/Worker 退出循环，减少日志刷屏
+      - NAPCAT_DISABLE_MULTI_PROCESS=1
     ports:
       - "6099:6099"   # NapCat WebUI
     volumes:

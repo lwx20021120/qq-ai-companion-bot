@@ -46,7 +46,7 @@ docker compose up -d
 1. 访问 `http://服务器IP:6099`（NapCat WebUI），扫码登录机器人 QQ
 2. NapCat 网络配置 → 新建 WebSocket 客户端 → URL 填 `ws://astrbot:6199/ws`
 3. 访问 `http://服务器IP:6185`（AstrBot WebUI，初始密码看容器日志）
-4. 模型提供商 → 新增 DeepSeek（填 API Key，模型选 `deepseek-v4-flash-vision-exp`，原生多模态可直接看图）
+4. 模型提供商 → 新增 DeepSeek（填 API Key，模型选 `deepseek-flash`，原生多模态可直接看图）
 5. 人格设定 → 导入 `persona/` 下的人设文件（把 `<主人QQ号>` 换成你自己的号）
 6. 安装插件：把 `plugins/` 下的目录复制到 AstrBot 的 `data/plugins/`，或在插件市场搜索安装
 
@@ -64,9 +64,11 @@ docker compose up -d
 ## 踩坑记录（重要）
 
 1. **跨容器发文件失败**：插件下载的媒体文件在 astrbot 容器里，NapCat 读不到。解法见 compose 里的共享挂载注释（`plugin_data` 以相同路径挂进两个容器）
-2. **图片"看不了"**：给纯文本模型配视觉模型时，主模型的 `modalities` 若为空列表会被当作"支持所有模态"导致转述管道被跳过；直接把主模型换成原生多模态模型最省心
+2. **模型名**：DeepSeek API 目前只接受 `deepseek-flash` 与 `deepseek-v4-pro`。平台界面显示的版本名（如 v4.1）≠ API 模型 ID；主模型直接用原生多模态的 `deepseek-flash` 即可读图，无需单独配视觉转述提供商
 3. **国内服务器**：Docker 镜像加速、GitHub 克隆走镜像（如 ghfast.top）、插件依赖 pip 走国内源
 4. **重登**：改 compose 重建 napcat 容器后 QQ 需重新扫码；登录数据都在挂载卷里，日常重启不受影响
+5. **账号风控**：频繁掉线/重登会触发 QQ 风控（`serverErrorCode: 168`），需用最新版手机 QQ 登录该账号按提示恢复后才能重新扫码
+6. **崩溃日志刷屏**：NapCat 的 QQ 原生崩溃上报会刷屏日志，可尝试给 napcat 容器加环境变量 `NAPCAT_DISABLE_MULTI_PROCESS=1` 缓解 Worker 崩溃循环
 
 ## 关键词唤醒插件说明
 

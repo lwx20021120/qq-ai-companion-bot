@@ -1,0 +1,68 @@
+{
+  "enabled": {
+    "description": "启用 MCP 服务",
+    "hint": "关闭后不再对外提供 MCP 接口，机器人本身不受影响。",
+    "type": "bool",
+    "default": true
+  },
+  "host": {
+    "description": "监听地址",
+    "hint": "容器内监听地址，保持 0.0.0.0；对外可达性由 docker-compose 的端口映射控制。",
+    "type": "string",
+    "default": "0.0.0.0"
+  },
+  "port": {
+    "description": "监听端口",
+    "hint": "MCP 服务端口，默认 18777。修改后需同步调整 docker-compose 的端口映射。",
+    "type": "int",
+    "default": 18777
+  },
+  "token": {
+    "description": "访问 Token",
+    "hint": "外部 Agent 连接时的 Bearer Token。留空会自动生成并保存，请勿泄露。",
+    "type": "string",
+    "default": ""
+  },
+  "max_sessions": {
+    "description": "最大并发群聊会话数",
+    "hint": "同时开启的持续群聊会话上限，默认 8。",
+    "type": "int",
+    "default": 8
+  },
+  "event_buffer": {
+    "description": "每群事件缓存条数",
+    "hint": "每个群保留的最近消息条数，默认 1000。",
+    "type": "int",
+    "default": 1000
+  },
+  "enable_send": {
+    "description": "允许发送消息",
+    "hint": "允许外部 Agent 通过 send_chat_message 在群里发言。",
+    "type": "bool",
+    "default": true
+  },
+  "enable_group_admin": {
+    "description": "允许群管理",
+    "hint": "开启后外部 Agent 可提出禁言/解除禁言/踢人/改群名操作。属于破坏性操作，默认关闭。",
+    "type": "bool",
+    "default": false
+  },
+  "require_approval": {
+    "description": "群管理需要二次审批",
+    "hint": "开启后管理操作先创建待审批项，确认码会发到主人 QQ，需主人本人提供确认码才会执行。建议保持开启。",
+    "type": "bool",
+    "default": true
+  },
+  "owner_qq": {
+    "description": "主人 QQ",
+    "hint": "群管理确认码发送到该 QQ 私聊，作为唯一的真人审批通道。",
+    "type": "string",
+    "default": "1603788471"
+  },
+  "allowed_groups": {
+    "description": "允许操作的群号",
+    "hint": "逗号分隔的群号白名单；留空表示不限制。建议填写以缩小影响范围。",
+    "type": "string",
+    "default": ""
+  }
+}

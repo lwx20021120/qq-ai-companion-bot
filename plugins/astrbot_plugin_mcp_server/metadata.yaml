@@ -1,0 +1,5 @@
+name: astrbot_plugin_mcp_server
+desc: 把 QQ 群收发与管理能力暴露为 MCP 工具，供外部 Agent（Codex / DeepSeek Harness 等）驱动群聊与群管理
+version: 1.0.0
+author: foldingmaple
+repo: https://github.com/lwx20021120/qq-ai-companion-bot

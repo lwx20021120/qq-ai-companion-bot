@@ -12,6 +12,7 @@
 """
 
 import asyncio
+import contextlib
 import datetime
 import random
 from collections import Counter, deque
@@ -25,7 +26,8 @@ from astrbot.core.message.message_event_result import MessageChain
 
 # ====== 配置区 ======
 GROUP_ID = "866530145"  # 目标群
-GROUP_SESSION = f"aiocqhttp:GroupMessage:{GROUP_ID}"
+# 会话前缀必须是平台「实例 ID」（如 aiocqhttp-qq），不是类型名 aiocqhttp，
+# 因此运行时动态解析，切勿硬编码。
 
 MORNING = (8, 0)  # 早安时间 (时, 分)
 NIGHT = (22, 30)  # 晚安时间
@@ -80,6 +82,8 @@ class GroupFunPlugin(Star):
         super().__init__(context, config)
         # (user_id, 昵称, 文本) 列表，用于日报统计
         self._daily_messages: deque[tuple[str, str, str]] = deque(maxlen=MAX_DAILY_MSGS)
+        # 会话前缀（平台实例 ID），运行时从平台实例或事件中解析
+        self._platform_id = ""
         # 记录已触发过的日期（防止重复触发）
         self._morning_done: set[str] = set()
         self._night_done: set[str] = set()
@@ -117,11 +121,24 @@ class GroupFunPlugin(Star):
 
     async def _send_group(self, text: str) -> None:
         try:
-            await self.context.send_message(
-                GROUP_SESSION, MessageChain([Plain(text)])
-            )
+            umo = self._group_session()
+            ok = await self.context.send_message(umo, MessageChain([Plain(text)]))
+            if not ok:
+                self.logger.error(f"[群功能] 群消息未送达：找不到平台 {umo}")
         except Exception as e:
             self.logger.error(f"[群功能] 群消息发送失败: {e}")
+
+    def _group_session(self) -> str:
+        """解析群会话标识；前缀必须是平台实例 ID（如 aiocqhttp-qq）。"""
+        if self._platform_id:
+            return f"{self._platform_id}:GroupMessage:{GROUP_ID}"
+        with contextlib.suppress(Exception):
+            for inst in self.context.platform_manager.get_insts():
+                meta = inst.meta()
+                if str(getattr(meta, "name", "")) == "aiocqhttp":
+                    self._platform_id = str(meta.id)
+                    return f"{self._platform_id}:GroupMessage:{GROUP_ID}"
+        return f"aiocqhttp:GroupMessage:{GROUP_ID}"
 
     # ---------- 群聊日报 ----------
     async def _send_daily_report(self) -> None:
@@ -173,6 +190,11 @@ class GroupFunPlugin(Star):
     @filter.event_message_type(EventMessageType.GROUP_MESSAGE)
     async def on_group_message(self, event: AstrMessageEvent) -> None:
         raw = getattr(event.message_obj, "raw_message", None)
+        # 从真实事件学习平台实例 ID，保证定时消息能准确送达
+        with contextlib.suppress(Exception):
+            pid = event.get_platform_id()
+            if pid:
+                self._platform_id = str(pid)
         # 群通知事件（新人入群）
         if isinstance(raw, dict):
             if raw.get("post_type") == "notice" and raw.get("notice_type") == "group_increase":

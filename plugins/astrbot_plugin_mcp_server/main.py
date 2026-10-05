@@ -109,6 +109,10 @@ class MCPServerPlugin(Star):
         # ---- 运行时状态 ----
         # 群号 -> deque[(event_id, payload)]
         self._events: dict[str, deque] = {}
+        # 会话前缀（平台实例 ID，如 aiocqhttp-qq），从真实事件学习
+        self._platform_id_cached = ""
+        # (消息类型, 目标) -> 真实 unified_msg_origin
+        self._umo_cache: dict[tuple[str, str], str] = {}
         self._event_seq = 0
         self._event_cv = asyncio.Condition()
         # session_id -> 会话状态
@@ -401,6 +405,7 @@ class MCPServerPlugin(Star):
                 return
             gid = str(gid)
             self._group_names.setdefault(gid, "")
+            self._learn_session(event, "GroupMessage", gid)
 
             text = event.message_str or ""
             segments = []
@@ -437,7 +442,47 @@ class MCPServerPlugin(Star):
         except Exception as e:
             self.logger.warning(f"[MCP] 采集群消息失败: {e}")
 
+    @filter.event_message_type(EventMessageType.PRIVATE_MESSAGE)
+    async def on_private_message(self, event: AstrMessageEvent) -> None:
+        """学习私聊会话标识，保证群管理确认码能准确送达主人。"""
+        try:
+            uid = str(event.get_sender_id() or "")
+            if uid:
+                self._learn_session(event, "FriendMessage", uid)
+        except Exception as e:
+            self.logger.warning(f"[MCP] 采集私聊消息失败: {e}")
+
     # ==================== OneBot 辅助 ====================
+
+    def _platform_id(self) -> str:
+        """会话前缀是平台**实例 ID**（如 aiocqhttp-qq），不是类型名 aiocqhttp。"""
+        if self._platform_id_cached:
+            return self._platform_id_cached
+        with contextlib.suppress(Exception):
+            for inst in self.context.platform_manager.get_insts():
+                meta = inst.meta()
+                if str(getattr(meta, "name", "")) == "aiocqhttp":
+                    self._platform_id_cached = str(meta.id)
+                    return self._platform_id_cached
+        return "aiocqhttp"
+
+    def _session(self, msg_type: str, target: str) -> str:
+        """优先复用从真实事件学到的 unified_msg_origin，避免前缀拼错。"""
+        target = str(target)
+        cached = self._umo_cache.get((msg_type, target))
+        if cached:
+            return cached
+        return f"{self._platform_id()}:{msg_type}:{target}"
+
+    def _learn_session(self, event: AstrMessageEvent, msg_type: str, target: str) -> None:
+        """从事件中学习平台实例 ID 与真实会话标识。"""
+        with contextlib.suppress(Exception):
+            pid = event.get_platform_id()
+            if pid:
+                self._platform_id_cached = str(pid)
+            umo = event.unified_msg_origin
+            if umo and target:
+                self._umo_cache[(msg_type, str(target))] = str(umo)
 
     def _get_bot(self):
         """取得 aiocqhttp 的 CQHttp 客户端，用于调用 OneBot 原始接口。"""
@@ -636,7 +681,7 @@ class MCPServerPlugin(Star):
         key = str(args["idempotency_key"])
         if not 8 <= len(key) <= 80:
             raise ValueError("idempotency_key 需为 8-80 字符")
-        umo = f"aiocqhttp:GroupMessage:{sess['group_id']}"
+        umo = self._session("GroupMessage", sess["group_id"])
         await self.context.send_message(umo, MessageChain([Plain(text)]))
         # 把自己的发言也记入该群事件流，方便外部 Agent 看到上下文
         self._event_seq += 1
@@ -761,10 +806,11 @@ class MCPServerPlugin(Star):
             "15 分钟内有效。同意就把确认码发给小织，不同意可直接拒绝。"
         )
         try:
-            await self.context.send_message(
-                f"aiocqhttp:FriendMessage:{owner}", MessageChain([Plain(text)])
-            )
-            return True
+            umo = self._session("FriendMessage", owner)
+            ok = await self.context.send_message(umo, MessageChain([Plain(text)]))
+            if not ok:
+                self.logger.warning(f"[MCP] 确认码未送达：找不到平台 {umo}")
+            return bool(ok)
         except Exception as e:
             self.logger.warning(f"[MCP] 发送确认码失败: {e}")
             return False
